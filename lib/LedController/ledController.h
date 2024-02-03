@@ -1,11 +1,24 @@
+#ifndef LED_CONTROLLER_H
+#define LED_CONTROLLER_H
+
 // Led Controller
 //
 // Independent fonction wich control an LED
 // There it will be possible to have nine modes
 // OFF, ON, BLINK, FLASH 1,2,3 and the flashing inverse
 //
-// See below how to use it!!!
+//           _                     _ _     _ _     _ _
+//            !                   !   !   !   !   !   !
+//            !_ _ _ _ _ _ _ _ _ _!   !_ _!   !_ _!   !_ _
+// Operation              0         5   4   3   2   1 
 // 
+// MaxOperationStep = 0 + 5
+// Time laps @0 = trep - (5 x ton)
+// Time laps @5, @4, @3, @2, @1 = ton 
+//
+//
+// See below how to use it!!!
+//  
 // #define GPIO XX
 //
 // struct LedParam LedRed, *PLedRed=&LedRed;
@@ -19,21 +32,20 @@
 // void loop()
 // {
 //      GPIOController(PLedRed, GPIO);
-//  }
+// }
 //
-
-#pragma once
 
 #include <Arduino.h>
 
 #define _ON 0
 #define _OFF 1
 
-enum OpMode {OFF, ON, BLINK, FLASH_ONE, FLASH_TWO, FLASH_THREE, FLASH_ONE_INV, FLASH_TWO_INV, FLASH_THREE_INV};
+extern const int Broche;
 
-struct LedParam
-{
-    enum OpMode Mode;       // Operating mode
+enum OperationMode {OFF, ON, BLINK, FLASH_ONE, FLASH_TWO, FLASH_THREE, FLASH_ONE_INV, FLASH_TWO_INV, FLASH_THREE_INV};
+
+struct LedParam{
+    enum OperationMode Mode;       // Operating mode or RunMode
 
     char MaxOperationStep;  // Number of operation step 
     bool Init;
@@ -45,6 +57,8 @@ struct LedParam
     long PreviousTime;
 };
 
-void SetLedParam (struct LedParam *_Led, enum OpMode _OpMode, int _tOn, int _tRep);
-void SetLedMode (struct LedParam *_Led, enum OpMode _OpMode);
-void GPIOController(struct LedParam *_LedParam, const byte _Led);
+void SetLedParam (struct LedParam *_Led, enum OperationMode _OpMode, int _tOn, int _tRep);
+void SetLedMode (struct LedParam *_Led, enum OperationMode _OpMode);
+void GPIOController(struct LedParam *_LedParam, int _Broche);
+
+#endif

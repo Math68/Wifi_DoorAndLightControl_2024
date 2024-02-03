@@ -1,7 +1,7 @@
 
-#include "LedController.h"
+#include <LedController.h>
 
-void SetLedParam (struct LedParam *_Led, enum OpMode _OpMode, int _tOn, int _tRep)
+void SetLedParam (struct LedParam *_Led, enum OperationMode _OpMode, int _tOn, int _tRep)
 {
     _Led->Mode=_OpMode;
     _Led->tOn=_tOn;
@@ -9,7 +9,7 @@ void SetLedParam (struct LedParam *_Led, enum OpMode _OpMode, int _tOn, int _tRe
     _Led->Init=false;
 }
 
-void SetLedMode (struct LedParam *_Led, enum OpMode _OpMode)
+void SetLedMode (struct LedParam *_Led, enum OperationMode _OpMode)
 {
     if(_OpMode!=_Led->Mode)
     {
@@ -18,8 +18,8 @@ void SetLedMode (struct LedParam *_Led, enum OpMode _OpMode)
     }
 }
 
-void GPIOController(struct LedParam *_LedParam, const byte _GPIO)
-{   
+void GPIOController(struct LedParam *_LedParam, int _Broche)
+{  
     if(_LedParam->Init==false)
     {
         _LedParam->Init=true;
@@ -144,7 +144,7 @@ void GPIOController(struct LedParam *_LedParam, const byte _GPIO)
                 break;
             }        
 
-            digitalWrite(_GPIO,_LedParam->Etat);
+            digitalWrite(_Broche, _LedParam->Etat);
         }
     }
 }

@@ -1,5 +1,5 @@
 #include "websocket.h"
-#include "CabinetManager.h"
+//#include "CabinetManager.h"
 
 static CabinetWebsocket *wsinst = nullptr;
 
@@ -42,6 +42,7 @@ void CabinetWebsocket::CabinetWebsocket::loop()
     ws->cleanupClients();
 }
 
+/*
 void CabinetWebsocket::handleClientMessage(void *arg, uint8_t *data, size_t len)
 {
   AwsFrameInfo *info = (AwsFrameInfo*)arg;
@@ -100,3 +101,4 @@ void CabinetWebsocket::sendInitialData(AsyncWebSocketClient *client)
   notifyClients("TresholdLow:" + String(TresholdLow, 10));  // TresholLow en decimal, d'ou le 10 pour la base 10 
   notifyClients("TresholdHigh:" + String(TresholdHigh, 10));
 }
+*/
