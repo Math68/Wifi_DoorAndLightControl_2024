@@ -22,3 +22,7 @@ private:
     void handleClientMessage(void *arg, uint8_t *data, size_t len);
     void sendInitialData(AsyncWebSocketClient *client);
 };
+
+void initWebSocket();
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
+void handelWebSocketMessage(void *arg, uint8_t *data, size_t len);

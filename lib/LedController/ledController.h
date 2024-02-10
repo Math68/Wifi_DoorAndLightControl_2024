@@ -1,5 +1,4 @@
-#ifndef LED_CONTROLLER_H
-#define LED_CONTROLLER_H
+#pragma once
 
 // Led Controller
 //
@@ -60,5 +59,3 @@ struct LedParam{
 void SetLedParam (struct LedParam *_Led, enum OperationMode _OpMode, int _tOn, int _tRep);
 void SetLedMode (struct LedParam *_Led, enum OperationMode _OpMode);
 void GPIOController(struct LedParam *_LedParam, int _Broche);
-
-#endif

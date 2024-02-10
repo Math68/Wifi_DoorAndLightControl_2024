@@ -1,5 +1,8 @@
 #include "websocket.h"
-//#include "CabinetManager.h"
+#include "wifi_2024.h"
+
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
 
 static CabinetWebsocket *wsinst = nullptr;
 
@@ -42,7 +45,12 @@ void CabinetWebsocket::CabinetWebsocket::loop()
     ws->cleanupClients();
 }
 
-/*
+void notifyClientsToRefreshPictures(String Data){
+  ws.textAll(Data);
+}
+
+
+
 void CabinetWebsocket::handleClientMessage(void *arg, uint8_t *data, size_t len)
 {
   AwsFrameInfo *info = (AwsFrameInfo*)arg;
@@ -52,6 +60,7 @@ void CabinetWebsocket::handleClientMessage(void *arg, uint8_t *data, size_t len)
     data[len] = 0;
     Serial.println(String((const char *)data));
     
+    /*
     if(strcmp((char*)data, "RunModeState")==0)
     {
       wsinst->notifyClients(RunModeState);
@@ -84,12 +93,13 @@ void CabinetWebsocket::handleClientMessage(void *arg, uint8_t *data, size_t len)
 
       SaveTresholdHigh(TempVal);
       notifyClients("TresholdHigh:" + String(TempVal, 10));  
-    } 
+    } */
   }
 }
 
 void CabinetWebsocket::sendInitialData(AsyncWebSocketClient *client)
 {
+  /*
   if (RUNMODE == COOLING) {
     client->text("Cooling");
   } else if (RUNMODE == HEATING) {
@@ -100,5 +110,45 @@ void CabinetWebsocket::sendInitialData(AsyncWebSocketClient *client)
   client->text(CabinetTemp);
   notifyClients("TresholdLow:" + String(TresholdLow, 10));  // TresholLow en decimal, d'ou le 10 pour la base 10 
   notifyClients("TresholdHigh:" + String(TresholdHigh, 10));
+  */
 }
-*/
+
+void handelWebSocketMessage(void *arg, uint8_t *data, size_t len){
+  AwsFrameInfo *info = (AwsFrameInfo*)arg;
+  if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT){
+
+    data[len] = 0;
+    Serial.print((char*)data);
+    
+    if(strcmp((char*)data, "getDoorsState")==0){
+      //notifyClientsToRefreshPictures(doorsState());
+      Serial.print("Notify Clients to Refresh \n");
+    }
+    else if (strcmp((char*)data, "toggle")==0){
+      //setRelayON();
+      Serial.print("toggle \n");
+    }
+  }
+}
+
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len){
+  switch(type){
+    case WS_EVT_CONNECT:
+    break;
+    case WS_EVT_DISCONNECT:
+    break;
+    case WS_EVT_DATA:
+      handelWebSocketMessage(arg, data, len);
+    break;
+    case WS_EVT_PONG:
+    case WS_EVT_ERROR:
+    break;
+  }
+}
+
+
+void initWebSocket(){
+  ws.onEvent(onEvent);
+  server.addHandler(&ws);
+}
+
