@@ -1,6 +1,51 @@
 #include "wifi_2024.h"
+#include "ledController.h"
+
+
 
 // ***************** FUNCTIONS ***************
+
+bool getDayState(){
+
+  bool state;
+
+  //if(digitalRead(IO_LDR) != dayCycleStatus){
+    //dayCycleStatus = digitalRead(IO_LDR);
+  //}
+
+  state=digitalRead(IO_LDR);
+  return state;
+}
+
+void getDoorState(){
+  if(digitalRead(IO_DoorG1) != DoorG1_Status)
+    DoorG1_Status=digitalRead(IO_DoorG1);
+
+  if(digitalRead(IO_DoorG2) != DoorG2_Status)
+    DoorG2_Status=digitalRead(IO_DoorG2);
+}
+
+void setLedState(){
+  if(digitalRead(IO_LDR) == NIGHT){
+
+    Serial.println("It's Night");
+    if(digitalRead(IO_DoorG1) == OPEN){
+      SetLedParam(PLedDoorG1, FLASH_ONE_INV, 150, 2000);
+    }
+    else
+    SetLedParam(PLedDoorG1, FLASH_ONE, 150, 2000);
+  }
+  else{
+    Serial.println("It's Day");
+    if(digitalRead(IO_DoorG1) == OPEN){
+      SetLedParam(PLedDoorG1, FLASH_ONE_INV, 100, 1000);
+    }
+    else
+    SetLedParam(PLedDoorG1, FLASH_ONE, 100, 1000);
+  }
+}
+
+
 /*
 void TimeManager(){
   if(Timer0HasOverflow == true){  // All 50ms

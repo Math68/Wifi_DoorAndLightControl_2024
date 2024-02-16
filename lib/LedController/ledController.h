@@ -39,8 +39,6 @@
 #define _ON 0
 #define _OFF 1
 
-extern const int Broche;
-
 enum OperationMode {OFF, ON, BLINK, FLASH_ONE, FLASH_TWO, FLASH_THREE, FLASH_ONE_INV, FLASH_TWO_INV, FLASH_THREE_INV};
 
 struct LedParam{
