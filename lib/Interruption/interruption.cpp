@@ -2,30 +2,24 @@
 
 // ********** INTERRUPTION FUNCTIONS ***************
 
-void IRAM_ATTR onmyTimer0Overflow(){
-    //myTimer0HasOverflow = true;
+Actions Action;
+
+void IRAM_ATTR onmyTimerOverflow(){
+    Action=MYTIMERHASOVERFLOW;
+    //Serial.println("Interruption, Timer has overflow");
 }
 
-void IRAM_ATTR onmyTimer1Overflow(){
+void IRAM_ATTR onDoorG1StateChanged(){
+        Action=DEBOUNCEG1;
+        Serial.println("Interruption, Door 1 State Changed: ");
 }
 
-void IRAM_ATTR onDoorG1Opened(){
-    Action=DOORG1OPENED;
-}
-
-void IRAM_ATTR onDoorG1Closed(){
-    Action=DOORG1CLOSED;
-}
-
-void IRAM_ATTR onDoorG2Opened(){
-    Action=DOOG2OPENED;
-}
-
-void IRAM_ATTR onDoorG2Closed(){
-    Action=DOORG2CLOSED;
+void IRAM_ATTR onDoorG2StateChanged(){
+    Action=DOORG2STATECHANGED;
+    //Serial.println("Interruption, Door 2 State changed");
 }
 
 void IRAM_ATTR onDayStateChanged(){
     Action=DAYSTATECHANGED;
-    Serial.println("Interruption, Day State Changed");
+    //Serial.println("Interruption, Day State Changed");
 }

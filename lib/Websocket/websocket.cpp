@@ -1,5 +1,5 @@
 #include "websocket.h"
-#include "wifi_2024.h"
+//#include "wifi_2024.h"
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -48,8 +48,6 @@ void CabinetWebsocket::CabinetWebsocket::loop()
 void notifyClientsToRefreshPictures(String Data){
   ws.textAll(Data);
 }
-
-
 
 void CabinetWebsocket::handleClientMessage(void *arg, uint8_t *data, size_t len)
 {

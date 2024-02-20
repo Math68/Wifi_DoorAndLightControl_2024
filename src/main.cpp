@@ -1,30 +1,30 @@
-// 10/02/2024
+// 16/02/2024
 // Last Update ?? Version definitive
 
 #include <Arduino.h>
-
+#include <Arduino_JSON.h>
 #include "ledController.h"
-#include "wifi_2024.h"
 #include "interruption.h"
 #include "websocket.h"
-#include "websocket.cpp"
+//#include "websocket.cpp"
 
 #include <WiFi.h>
 #include <SPIFFS.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 
-Actions Action=SOLVED;
+#define DAY 1
+#define NIGHT 0
 
-//bool myDayStateChanged=false;
-//bool DoorG1_Status=CLOSED;
-//bool DoorG2_Status=CLOSED;
-//bool PinStatus=0;
+#define CLOSED 0
+#define OPEN 1
 
-bool currentDoorG1State=CLOSED;
-bool currentDoorG2State=CLOSED;
-bool currentDayState=NIGHT;
-bool dayState;
+// *************** SET VARIABLES ****************
 
-int PreviousTime;
+bool RelaisOn;
+int PreviousTime=0;
+int PreviousDebounceTime=0;
+int CurrentDebounceTime=0;
 
 struct LedParam LedDoorG1;
 struct LedParam LedDoorG2;
@@ -32,10 +32,58 @@ struct LedParam LedDoorG2;
 LedParam *PLedDoorG1 = &LedDoorG1;
 LedParam *PLedDoorG2 = &LedDoorG2;
 
-hw_timer_t *myTimer0=NULL;
-hw_timer_t *myTimer1=NULL;
+//hw_timer_t *myTimer=NULL;
 
-// *********** SETUP **********
+extern Actions Action;
+
+String DoorMathState="Closed";
+String DoorCaroState="Closed";
+
+/*
+// Json Variable
+JSONVar DoorsState;
+
+String doorsState(){
+  
+  if(digitalRead(IO_Door1))
+    DoorMathState = "Open";
+    else
+    DoorMathState = "Closed";
+  
+  if(digitalRead(IO_Door2))
+    DoorCaroState = "Open";
+    else
+    DoorCaroState = "Closed";
+  
+  DoorsState["DoorMathState"]=String(DoorMathState);
+  DoorsState["DoorCaroState"]=String(DoorCaroState);
+
+  String jsonString = JSON.stringify(DoorsState);
+  return jsonString;
+}
+*/
+
+// ************** SET PIN NUMBERS ***************
+// 34 -> 39 only inputs
+// Inputs
+const int IO_DoorG1 = 26;
+const int IO_DoorG2 = 14;
+const int IO_LDR = 15;   // ADC1_CH
+const int IO_Home = 12;
+
+// Outputs
+const int IO_Relay = 25;
+const int IO_LedDoorG1 = 19;
+const int IO_LedDoorG2 = 17;
+
+// *********** FUNCTIONS DRINITION *********
+
+void setLedState();
+
+// **********************************************
+// ***************** SETUP **********************
+// **********************************************
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Setup Sart");
@@ -55,32 +103,26 @@ void setup() {
 
   // Set Leds
   SetLedParam(PLedDoorG1, FLASH_THREE, 100, 1500);
-//  SetLedParam(PLedDoorG2, BLINK, 150, 2000);
+  SetLedParam(PLedDoorG2, BLINK, 150, 2000);
 
+/*
   // Timer Setup
-  myTimer0 = timerBegin(0, 80, true);
-  timerAttachInterrupt(myTimer0, &onmyTimer0Overflow, true);
-  timerAlarmWrite(myTimer0, 50000, true);  // Interruption toutes les 50000us soit 50ms
-  timerAlarmEnable(myTimer0);
-
-  myTimer1 = timerBegin(0, 80, true);
-  timerAttachInterrupt(myTimer1, &onmyTimer1Overflow, true);
-  timerAlarmWrite(myTimer1, 50000, true);  // Interruption toutes les 50000us soit 50ms
-  timerAlarmEnable(myTimer1);
-
+  myTimer = timerBegin(1, 16000, true);                        // Interruption all 200 us
+  timerAttachInterrupt(myTimer, &onmyTimerOverflow, true);
+  timerAlarmWrite(myTimer, 5000, true);                        // Interruption after 1s
+//  timerAlarmEnable(myTimer);
+*/
   // Interruption Setup
-  attachInterrupt(digitalPinToInterrupt(IO_DoorG1), onDoorG1Opened, RISING);
-  attachInterrupt(digitalPinToInterrupt(IO_DoorG1), onDoorG1Closed, FALLING);
+  attachInterrupt(IO_DoorG1, &onDoorG1StateChanged, HIGH);
   
-  attachInterrupt(digitalPinToInterrupt(IO_DoorG2), onDoorG2Opened, RISING);
-  attachInterrupt(digitalPinToInterrupt(IO_DoorG2), onDoorG2Closed, FALLING);
+  attachInterrupt(IO_DoorG2, &onDoorG2StateChanged, RISING);
   
-  attachInterrupt(digitalPinToInterrupt(IO_LDR), onDayStateChanged, CHANGE); 
+  attachInterrupt(IO_LDR, &onDayStateChanged, CHANGE); 
 
   // Initialize Wifi
-  const char* ssid = "Freebox-372EBF";
-  const char* password = "mfrfzq7db9q43xzrqmv49b";
-
+//  const char* ssid = 
+//  const char* password =
+/*
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   if (WiFi.waitForConnectResult() != WL_CONNECTED){
@@ -91,19 +133,21 @@ void setup() {
   Serial.println();
   Serial.print("ESP IP Address: http://");
   Serial.println(WiFi.localIP());
-
+*/
+/*
   // Initialize SPIFFS
   if(!SPIFFS.begin())
     Serial.println("An Error has occured while mounting SPIFFS");
     else
     Serial.println("SPIFFS Mounted successfully");
-      
+  */    
   initWebSocket();
 
-  PreviousTime = millis();
+  //PreviousTime = millis();
   Serial.println("Setup complete");
-}
 
+  Action=SOLVED;
+}
 
 // ********* MAIN PROGRAMM **********
 void loop() {
@@ -113,57 +157,94 @@ void loop() {
   switch(Action){
     case DAYSTATECHANGED:{
       Action=SOLVED;
+      Serial.println("Action: Day State changed");
       setLedState();
-
-    };
-    case DOORG1OPENED:{
+      break;
+    }
+    case DOORG1STATECHANGED:{
+      Serial.println("Debounce Time: " + String(millis()));
+      if( millis()-PreviousDebounceTime >30){
+        if(digitalRead(IO_DoorG1)==HIGH)
+        {
+          setLedState();
+          digitalWrite(IO_Relay, HIGH);
+          PreviousTime=millis();
+          RelaisOn=true;
+        }
+        Action=SOLVED;
+      }
+      break;
+    }
+    case DOORG2STATECHANGED:{
       Action=SOLVED;
-
-    };
-    case DOORG1CLOSED:{
+      break;
+    }
+    case MYTIMERHASOVERFLOW:{
       Action=SOLVED;
-
-    };
-    case DOOG2OPENED:{
-      Action=SOLVED;
-
-    };
-    case DOORG2CLOSED:{
-      Action=SOLVED;
-
-    };
+      break;
+    }
     case SOLVED:{
-      Serial.println("Action Solved " + String(millis()));
+      break;
+    }
+    case DEBOUNCEG1:{
+      PreviousDebounceTime = millis();
+      Action=DOORG1STATECHANGED;
+      break;
+    }
+    case DEBOUNCEG2:{
+      PreviousDebounceTime = millis();
+      Action=DOORG2STATECHANGED;
+      break;
     }
   }
-  ws.cleanupClients();
-}
-/*
-  if(millis() - PreviousTime > 5000)     // all 5s
+
+  if(RelaisOn==true)  
   {
-    Serial.println("Passage dans boucle " + String(PreviousTime));
-    PreviousTime=millis();
-    
-    dayState=getDayState();
-
-    Serial.println("Day State " + String(dayState));
-
-    if(dayState != currentDayState)
-    {
-      currentDayState=dayState;
-      Serial.println("Current Day State" + String(currentDayState));
-      if(dayState == DAY){
-        Serial.println("Set Output to High");
-        //digitalWrite(IO_LedDoorG2, LOW);
-        SetLedParam(PLedDoorG2, FLASH_TWO, 100, 1000);
-      }
-      else{
-        Serial.println("Set Output to Low");
-        //digitalWrite(IO_LedDoorG2, HIGH);
-        SetLedParam(PLedDoorG2, FLASH_TWO, 100, 2000);
-      }
+    if((millis()-PreviousTime)>1000){
+      RelaisOn=false;
+      digitalWrite(IO_Relay, LOW);
+      Serial.println("Relais Closed " + String(PreviousTime));
     }
   }
-*/
 
+}
+  //ws.cleanupClients();
 
+// ***************** FUNCTIONS ******************
+
+void setLedState(){
+  if(digitalRead(IO_LDR) == NIGHT){
+
+    Serial.println("It's Night \n");
+
+    if(digitalRead(IO_DoorG1) == OPEN){
+      SetLedParam(PLedDoorG1, FLASH_ONE_INV, 150, 2000);
+    }
+    else
+    SetLedParam(PLedDoorG1, FLASH_ONE, 150, 2000);
+
+    if(digitalRead(IO_DoorG2) == OPEN){
+      SetLedParam(PLedDoorG2, FLASH_TWO_INV, 150, 2000);
+    }
+    else
+    SetLedParam(PLedDoorG2, FLASH_TWO, 150, 2000);
+
+  }
+  
+  if(digitalRead(IO_LDR) == DAY){   // if it's Day
+
+    Serial.println("It's Day \n");
+
+    if(digitalRead(IO_DoorG1) == OPEN){
+      SetLedParam(PLedDoorG1, FLASH_ONE_INV, 100, 1000);
+    }
+    else
+    SetLedParam(PLedDoorG1, FLASH_ONE, 100, 1000);
+
+    if(digitalRead(IO_DoorG2) == OPEN){
+      SetLedParam(PLedDoorG2, FLASH_TWO_INV, 100, 1000);
+    }
+    else
+    SetLedParam(PLedDoorG2, FLASH_TWO, 100, 1000);
+  }
+}
