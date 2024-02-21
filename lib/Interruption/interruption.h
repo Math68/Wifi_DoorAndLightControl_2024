@@ -2,12 +2,8 @@
 
 #include <Arduino.h>
 
-enum Actions {DAYSTATECHANGED, DOORG1STATECHANGED, DOORG2STATECHANGED, MYTIMERHASOVERFLOW, SOLVED, DEBOUNCEG1, DEBOUNCEG2};
+enum ISR_Events {DAYSTATECHANGED, DOORG1DEBOUNCE, DOORG2DEBOUNCE, DOORG1MOVED, DOORG2MOVED, SOLVED,};
 
-
-void IRAM_ATTR onmyTimerOverflow();
-
-void IRAM_ATTR onDoorG1StateChanged();
-void IRAM_ATTR onDoorG2StateChanged();
-
-void IRAM_ATTR onDayStateChanged();
+void IRAM_ATTR ISR_DoorG1Moved();
+void IRAM_ATTR ISR_DoorG2Moved();
+void IRAM_ATTR ISR_DayStateChanged();

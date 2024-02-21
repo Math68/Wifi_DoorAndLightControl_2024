@@ -22,9 +22,8 @@
 // *************** SET VARIABLES ****************
 
 bool RelaisOn;
-int PreviousTime=0;
-int PreviousDebounceTime=0;
-int CurrentDebounceTime=0;
+int RelaisOnTime=0;
+int DebounceTime=0;
 
 struct LedParam LedDoorG1;
 struct LedParam LedDoorG2;
@@ -34,7 +33,7 @@ LedParam *PLedDoorG2 = &LedDoorG2;
 
 //hw_timer_t *myTimer=NULL;
 
-extern Actions Action;
+extern ISR_Events ISR_Event;
 
 String DoorMathState="Closed";
 String DoorCaroState="Closed";
@@ -113,11 +112,9 @@ void setup() {
 //  timerAlarmEnable(myTimer);
 */
   // Interruption Setup
-  attachInterrupt(IO_DoorG1, &onDoorG1StateChanged, HIGH);
-  
-  attachInterrupt(IO_DoorG2, &onDoorG2StateChanged, RISING);
-  
-  attachInterrupt(IO_LDR, &onDayStateChanged, CHANGE); 
+  attachInterrupt(IO_DoorG1, &ISR_DoorG1Moved, CHANGE);
+  attachInterrupt(IO_DoorG2, &ISR_DoorG2Moved, CHANGE);  
+  attachInterrupt(IO_LDR, &ISR_DayStateChanged, CHANGE); 
 
   // Initialize Wifi
 //  const char* ssid = 
@@ -146,7 +143,7 @@ void setup() {
   //PreviousTime = millis();
   Serial.println("Setup complete");
 
-  Action=SOLVED;
+  ISR_Event=SOLVED;
 }
 
 // ********* MAIN PROGRAMM **********
@@ -154,59 +151,55 @@ void loop() {
   GPIOController(PLedDoorG1, IO_LedDoorG1);
   GPIOController(PLedDoorG2, IO_LedDoorG2);
 
-  switch(Action){
+  switch(ISR_Event){
     case DAYSTATECHANGED:{
-      Action=SOLVED;
+      ISR_Event=SOLVED;
       Serial.println("Action: Day State changed");
       setLedState();
       break;
     }
-    case DOORG1STATECHANGED:{
+    case DOORG1DEBOUNCE:{
+      DebounceTime = millis();
+      ISR_Event=DOORG1MOVED;
+      break;
+    }
+    case DOORG2DEBOUNCE:{
+      DebounceTime = millis();
+      ISR_Event=DOORG2MOVED;
+      break;
+    }
+    case DOORG1MOVED:{
       Serial.println("Debounce Time: " + String(millis()));
-      if( millis()-PreviousDebounceTime >30){
+      if( millis()-DebounceTime >10){
         if(digitalRead(IO_DoorG1)==HIGH)
         {
           setLedState();
-          digitalWrite(IO_Relay, HIGH);
-          PreviousTime=millis();
-          RelaisOn=true;
+          if(digitalRead(IO_LDR)==NIGHT){
+            digitalWrite(IO_Relay, HIGH);
+            RelaisOn=true;
+            RelaisOnTime=millis();
+          }
         }
-        Action=SOLVED;
+        ISR_Event=SOLVED;
       }
       break;
     }
-    case DOORG2STATECHANGED:{
-      Action=SOLVED;
-      break;
-    }
-    case MYTIMERHASOVERFLOW:{
-      Action=SOLVED;
+    case DOORG2MOVED:{
+      ISR_Event=SOLVED;
       break;
     }
     case SOLVED:{
-      break;
-    }
-    case DEBOUNCEG1:{
-      PreviousDebounceTime = millis();
-      Action=DOORG1STATECHANGED;
-      break;
-    }
-    case DEBOUNCEG2:{
-      PreviousDebounceTime = millis();
-      Action=DOORG2STATECHANGED;
       break;
     }
   }
 
   if(RelaisOn==true)  
   {
-    if((millis()-PreviousTime)>1000){
+    if((millis()-RelaisOnTime)>1000){
       RelaisOn=false;
       digitalWrite(IO_Relay, LOW);
-      Serial.println("Relais Closed " + String(PreviousTime));
     }
   }
-
 }
   //ws.cleanupClients();
 
