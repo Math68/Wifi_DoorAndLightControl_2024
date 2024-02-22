@@ -1,4 +1,4 @@
-// 16/02/2024
+// 22/02/2024
 // Last Update ?? Version definitive
 
 #include <Arduino.h>
@@ -6,6 +6,7 @@
 #include "ledController.h"
 #include "interruption.h"
 #include "websocket.h"
+#include "password.h"
 //#include "websocket.cpp"
 
 #include <WiFi.h>
@@ -15,52 +16,9 @@
 
 #define DAY 1
 #define NIGHT 0
-
 #define CLOSED 0
 #define OPEN 1
-
-// *************** SET VARIABLES ****************
-
-bool RelaisOn;
-int RelaisOnTime=0;
-int DebounceTime=0;
-
-struct LedParam LedDoorG1;
-struct LedParam LedDoorG2;
-
-LedParam *PLedDoorG1 = &LedDoorG1;
-LedParam *PLedDoorG2 = &LedDoorG2;
-
-//hw_timer_t *myTimer=NULL;
-
-extern ISR_Events ISR_Event;
-
-String DoorMathState="Closed";
-String DoorCaroState="Closed";
-
-/*
-// Json Variable
-JSONVar DoorsState;
-
-String doorsState(){
-  
-  if(digitalRead(IO_Door1))
-    DoorMathState = "Open";
-    else
-    DoorMathState = "Closed";
-  
-  if(digitalRead(IO_Door2))
-    DoorCaroState = "Open";
-    else
-    DoorCaroState = "Closed";
-  
-  DoorsState["DoorMathState"]=String(DoorMathState);
-  DoorsState["DoorCaroState"]=String(DoorCaroState);
-
-  String jsonString = JSON.stringify(DoorsState);
-  return jsonString;
-}
-*/
+#define ISR_Solved ISR_Event=SOLVED;
 
 // ************** SET PIN NUMBERS ***************
 // 34 -> 39 only inputs
@@ -75,9 +33,53 @@ const int IO_Relay = 25;
 const int IO_LedDoorG1 = 19;
 const int IO_LedDoorG2 = 17;
 
-// *********** FUNCTIONS DRINITION *********
+// *************** SET VARIABLES ****************
 
+bool RelaisOn;
+int RelaisOnTime=0;
+int DebounceTime=0;
+
+struct LedParam LedDoorG1;
+struct LedParam LedDoorG2;
+
+LedParam *PLedDoorG1 = &LedDoorG1;
+LedParam *PLedDoorG2 = &LedDoorG2;
+
+extern ISR_Events ISR_Event;
+
+// ***** Json Variable *****
+
+String DoorMathState="Closed";
+String DoorCaroState="Closed";
+
+JSONVar DoorsState;
+
+String doorsState(){
+  
+  if(digitalRead(IO_DoorG1))
+    DoorMathState = "Open";
+    else
+    DoorMathState = "Closed";
+  
+  if(digitalRead(IO_DoorG2))
+    DoorCaroState = "Open";
+    else
+    DoorCaroState = "Closed";
+  
+  DoorsState["DoorMathState"]=String(DoorMathState);
+  DoorsState["DoorCaroState"]=String(DoorCaroState);
+
+  String jsonString = JSON.stringify(DoorsState);
+  return jsonString;
+}
+
+// *********** FUNCTIONS DRINITION *********
 void setLedState();
+void setRelaisOn();
+void setRelaisOff();
+bool getDoorG1();
+bool getDoorG2();
+bool getDayState();
 
 // **********************************************
 // ***************** SETUP **********************
@@ -104,22 +106,12 @@ void setup() {
   SetLedParam(PLedDoorG1, FLASH_THREE, 100, 1500);
   SetLedParam(PLedDoorG2, BLINK, 150, 2000);
 
-/*
-  // Timer Setup
-  myTimer = timerBegin(1, 16000, true);                        // Interruption all 200 us
-  timerAttachInterrupt(myTimer, &onmyTimerOverflow, true);
-  timerAlarmWrite(myTimer, 5000, true);                        // Interruption after 1s
-//  timerAlarmEnable(myTimer);
-*/
   // Interruption Setup
   attachInterrupt(IO_DoorG1, &ISR_DoorG1Moved, CHANGE);
   attachInterrupt(IO_DoorG2, &ISR_DoorG2Moved, CHANGE);  
   attachInterrupt(IO_LDR, &ISR_DayStateChanged, CHANGE); 
 
   // Initialize Wifi
-//  const char* ssid = 
-//  const char* password =
-/*
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   if (WiFi.waitForConnectResult() != WL_CONNECTED){
@@ -130,7 +122,7 @@ void setup() {
   Serial.println();
   Serial.print("ESP IP Address: http://");
   Serial.println(WiFi.localIP());
-*/
+
 /*
   // Initialize SPIFFS
   if(!SPIFFS.begin())
@@ -139,22 +131,25 @@ void setup() {
     Serial.println("SPIFFS Mounted successfully");
   */    
   initWebSocket();
-
-  //PreviousTime = millis();
-  Serial.println("Setup complete");
-
-  ISR_Event=SOLVED;
+  ISR_Solved;
 }
 
 // ********* MAIN PROGRAMM **********
 void loop() {
+
   GPIOController(PLedDoorG1, IO_LedDoorG1);
   GPIOController(PLedDoorG2, IO_LedDoorG2);
 
+  if(RelaisOn==true)  
+  {
+    if((millis()-RelaisOnTime)>1000){
+      setRelaisOff();
+    }
+  }
+
   switch(ISR_Event){
     case DAYSTATECHANGED:{
-      ISR_Event=SOLVED;
-      Serial.println("Action: Day State changed");
+      ISR_Solved;
       setLedState();
       break;
     }
@@ -168,36 +163,25 @@ void loop() {
       ISR_Event=DOORG2MOVED;
       break;
     }
-    case DOORG1MOVED:{
-      Serial.println("Debounce Time: " + String(millis()));
+    case DOORG1MOVED:{      
       if( millis()-DebounceTime >10){
-        if(digitalRead(IO_DoorG1)==HIGH)
+        if(getDoorG1()==HIGH)
         {
           setLedState();
-          if(digitalRead(IO_LDR)==NIGHT){
-            digitalWrite(IO_Relay, HIGH);
-            RelaisOn=true;
-            RelaisOnTime=millis();
+          if(getDayState()==NIGHT){
+            setRelaisOn();
           }
         }
-        ISR_Event=SOLVED;
+        ISR_Solved;
       }
       break;
     }
     case DOORG2MOVED:{
-      ISR_Event=SOLVED;
+      ISR_Solved
       break;
     }
     case SOLVED:{
       break;
-    }
-  }
-
-  if(RelaisOn==true)  
-  {
-    if((millis()-RelaisOnTime)>1000){
-      RelaisOn=false;
-      digitalWrite(IO_Relay, LOW);
     }
   }
 }
@@ -206,17 +190,17 @@ void loop() {
 // ***************** FUNCTIONS ******************
 
 void setLedState(){
-  if(digitalRead(IO_LDR) == NIGHT){
+  if(getDayState() == NIGHT){
 
     Serial.println("It's Night \n");
 
-    if(digitalRead(IO_DoorG1) == OPEN){
+    if(getDoorG1() == OPEN){
       SetLedParam(PLedDoorG1, FLASH_ONE_INV, 150, 2000);
     }
     else
     SetLedParam(PLedDoorG1, FLASH_ONE, 150, 2000);
 
-    if(digitalRead(IO_DoorG2) == OPEN){
+    if(getDoorG2() == OPEN){
       SetLedParam(PLedDoorG2, FLASH_TWO_INV, 150, 2000);
     }
     else
@@ -224,20 +208,43 @@ void setLedState(){
 
   }
   
-  if(digitalRead(IO_LDR) == DAY){   // if it's Day
+  if(getDayState() == DAY){   // if it's Day
 
     Serial.println("It's Day \n");
 
-    if(digitalRead(IO_DoorG1) == OPEN){
+    if(getDoorG1() == OPEN){
       SetLedParam(PLedDoorG1, FLASH_ONE_INV, 100, 1000);
     }
     else
     SetLedParam(PLedDoorG1, FLASH_ONE, 100, 1000);
 
-    if(digitalRead(IO_DoorG2) == OPEN){
+    if(getDoorG2() == OPEN){
       SetLedParam(PLedDoorG2, FLASH_TWO_INV, 100, 1000);
     }
     else
     SetLedParam(PLedDoorG2, FLASH_TWO, 100, 1000);
   }
+}
+
+void setRelaisOn(){
+  digitalWrite(IO_Relay, HIGH);
+  RelaisOn=true;
+  RelaisOnTime=millis();
+}
+
+void setRelaisOff(){
+  digitalWrite(IO_Relay, LOW);
+  RelaisOn=false;
+}
+
+bool getDoorG1(){
+  return digitalRead(IO_DoorG1);
+}
+
+bool getDoorG2(){
+  return digitalRead(IO_DoorG2);
+}
+
+bool getDayState(){
+  return digitalRead(IO_LDR);
 }
