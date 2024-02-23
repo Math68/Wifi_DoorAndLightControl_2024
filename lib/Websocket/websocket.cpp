@@ -1,24 +1,21 @@
 #include "websocket.h"
 //#include "wifi_2024.h"
 
-AsyncWebServer server(80);
-AsyncWebSocket ws("/ws");
+static DoorAndLightWebsocket *wsinst = nullptr;
 
-static CabinetWebsocket *wsinst = nullptr;
-
-CabinetWebsocket::CabinetWebsocket(AsyncWebServer *_server, AsyncWebSocket *_ws):
+DoorAndLightWebsocket::DoorAndLightWebsocket(AsyncWebServer *_server, AsyncWebSocket *_ws):
     server(_server),
     ws(_ws)
 {
     wsinst = this;
 }
 
-void CabinetWebsocket::notifyClients(String Data)
+void DoorAndLightWebsocket::notifyClients(String Data)
 {
   ws->textAll(Data);
 }
 
-void CabinetWebsocket::onWSEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len){
+void DoorAndLightWebsocket::onWSEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len){
   switch(type){
     case WS_EVT_CONNECT:
       wsinst->sendInitialData(client);
@@ -34,22 +31,22 @@ void CabinetWebsocket::onWSEvent(AsyncWebSocket *server, AsyncWebSocketClient *c
   }
 }
 
-void CabinetWebsocket::initWebSocket()
+void DoorAndLightWebsocket::initWebSocket()
 {
   ws->onEvent(onWSEvent);
   server->addHandler(ws);
 }
 
-void CabinetWebsocket::CabinetWebsocket::loop()
+void DoorAndLightWebsocket::DoorAndLightWebsocket::loop()
 {
     ws->cleanupClients();
 }
 
-void notifyClientsToRefreshPictures(String Data){
-  ws.textAll(Data);
-}
+//void notifyClientsToRefreshPictures(String Data){
+  //ws.textAll(Data);
+//}
 
-void CabinetWebsocket::handleClientMessage(void *arg, uint8_t *data, size_t len)
+void DoorAndLightWebsocket::handleClientMessage(void *arg, uint8_t *data, size_t len)
 {
   AwsFrameInfo *info = (AwsFrameInfo*)arg;
   if(info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
@@ -95,7 +92,7 @@ void CabinetWebsocket::handleClientMessage(void *arg, uint8_t *data, size_t len)
   }
 }
 
-void CabinetWebsocket::sendInitialData(AsyncWebSocketClient *client)
+void DoorAndLightWebsocket::sendInitialData(AsyncWebSocketClient *client)
 {
   /*
   if (RUNMODE == COOLING) {
@@ -143,10 +140,3 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
     break;
   }
 }
-
-
-void initWebSocket(){
-  ws.onEvent(onEvent);
-  server.addHandler(&ws);
-}
-

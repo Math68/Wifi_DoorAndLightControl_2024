@@ -4,10 +4,10 @@
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
 
-class CabinetWebsocket
+class DoorAndLightWebsocket
 {
 public:
-    CabinetWebsocket(AsyncWebServer *_server, AsyncWebSocket *_ws);
+    DoorAndLightWebsocket(AsyncWebServer *_server, AsyncWebSocket *_ws);
 
     void initWebSocket();
     void notifyClients(String Data);
@@ -22,7 +22,3 @@ private:
     void handleClientMessage(void *arg, uint8_t *data, size_t len);
     void sendInitialData(AsyncWebSocketClient *client);
 };
-
-void initWebSocket();
-void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
-void handelWebSocketMessage(void *arg, uint8_t *data, size_t len);
