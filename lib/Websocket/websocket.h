@@ -4,6 +4,8 @@
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
 
+#define NIGHT 0
+
 class DoorAndLightWebsocket
 {
 public:
@@ -19,6 +21,6 @@ private:
     AsyncWebSocket *ws = nullptr;
 
     static void onWSEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
-    void handleClientMessage(void *arg, uint8_t *data, size_t len);
-    void sendInitialData(AsyncWebSocketClient *client);
+    void handleClientRequest(void *arg, uint8_t *data, size_t len);
+    void sendClientInitialData(AsyncWebSocketClient *client);
 };

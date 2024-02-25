@@ -4,7 +4,7 @@ $(document).ready(function(){
 	initWebSocket();
 	
 	$("#btlight").click(function() {
-		websocket.send('toggle');
+		websocket.send('clientRequestLightOn');
 	});
 });
 
@@ -21,7 +21,7 @@ function initWebSocket() {
 }	 
 
 function getDoorsState(){
-	websocket.send("getDoorsState");
+	websocket.send("ClientRequestDoorsState");
 	}
 
 function onOpen(event) {
@@ -34,12 +34,6 @@ function onClose(event) {
 	setTimeout(initWebSocket, 2000);
 	}
 
-function toggle(){
-	websocket.send('toggle');
-	}
-
-function onRefresh(){}
-
 function onMessage(event) {
     console.log(event.data);
 	var myObj = event.data;
@@ -49,14 +43,14 @@ function onMessage(event) {
 	console.log(myObj);
 	
 	if(myObj.DoorMathState == "Closed"){
-		$("#DoorMathState").attr("src", "DoorClosed.png");
+		$('#DoorMathState').attr('src', "/DoorClosed.png");
 	}else{
-		$("#DoorMathState").attr("src", "DoorOpen.png");
+		$('#DoorMathState').attr('src', "/DoorOpen.png");
 	}
 	
 	if(myObj.DoorCaroState == "Closed"){
-		$("#DoorCaroState").attr("src", "DoorClosed.png");
+		$("#DoorCaroState").attr("src", "/DoorClosed.png");
 	}else{
-		$("#DoorCaroState").attr("src", "DoorOpen.png");
+		$("#DoorCaroState").attr("src", "/DoorOpen.png");
 	}
 }

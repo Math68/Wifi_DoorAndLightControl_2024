@@ -1,5 +1,5 @@
-// 23/02/2024 8H15
-// Last Update ?? Version definitive
+// 25/02/2024 19H15
+// Last Version
 
 #include <Arduino.h>
 #include <Arduino_JSON.h>
@@ -45,19 +45,27 @@ LedParam *PLedDoorG2 = &LedDoorG2;
 
 extern ISR_Events ISR_Event;
 
+// *********** FUNCTIONS DRINITION *********
+void setLedState();
+void setRelaisOn();
+void setRelaisOff();
+bool getDoorG1State();
+bool getDoorG2State();
+bool getDayState();
+
 // ***** Json Variable *****
 String DoorMathState="Closed";
 String DoorCaroState="Closed";
 
 JSONVar DoorsState;
 
-String doorsState(){
-  if(digitalRead(IO_DoorG1))
+String InformClientAboutDoorsState(){
+  if(getDoorG1State()==OPEN)
     DoorMathState = "Open";
     else
     DoorMathState = "Closed";
   
-  if(digitalRead(IO_DoorG2))
+  if(getDoorG2State()==OPEN)
     DoorCaroState = "Open";
     else
     DoorCaroState = "Closed";
@@ -68,14 +76,6 @@ String doorsState(){
   String jsonString = JSON.stringify(DoorsState);
   return jsonString;
 }
-
-// *********** FUNCTIONS DRINITION *********
-void setLedState();
-void setRelaisOn();
-void setRelaisOff();
-bool getDoorG1State();
-bool getDoorG2State();
-bool getDayState();
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -169,7 +169,6 @@ void setup() {
   {
     request->send(SPIFFS, "/index.html", "text/html");
   });
-
   server.serveStatic("/",SPIFFS, "/");
   server.begin();
   debugln("Serveur actif!");
@@ -206,19 +205,36 @@ void loop() {
     }
     case DOORG1MOVED:{      
       if( millis()-DebounceTime >10){
-        if(getDoorG1State()==HIGH)
-        {
-          setLedState();
+        if(getDoorG1State()==HIGH){
           if(getDayState()==NIGHT){
             setRelaisOn();
           }
+          DoorMathState = "Open";
         }
+        else{
+          DoorMathState = "Closed";
+        }
+        setLedState();
+        websocket.notifyClients(InformClientAboutDoorsState());
         ISR_Solved;
       }
       break;
     }
     case DOORG2MOVED:{
-      ISR_Solved
+      if( millis()-DebounceTime >10){
+        if(getDoorG2State()==HIGH){
+          if(getDayState()==NIGHT){
+            setRelaisOn();
+          }
+          DoorCaroState = "Open";
+        }
+        else{
+          DoorCaroState = "Closed";
+        }
+        setLedState();
+        websocket.notifyClients(InformClientAboutDoorsState());
+        ISR_Solved;
+      }
       break;
     }
     case SOLVED:{
@@ -236,16 +252,16 @@ void setLedState(){
     Serial.println("It's Night \n");
 
     if(getDoorG1State() == OPEN){
-      SetLedParam(PLedDoorG1, FLASH_ONE_INV, 150, 2000);
+      SetLedParam(PLedDoorG1, FLASH_ONE_INV, 150, 3000);
     }
     else
-    SetLedParam(PLedDoorG1, FLASH_ONE, 150, 2000);
+    SetLedParam(PLedDoorG1, FLASH_ONE, 150, 3000);
 
     if(getDoorG2State() == OPEN){
-      SetLedParam(PLedDoorG2, FLASH_TWO_INV, 150, 2000);
+      SetLedParam(PLedDoorG2, FLASH_TWO_INV, 150, 3000);
     }
     else
-    SetLedParam(PLedDoorG2, FLASH_TWO, 150, 2000);
+    SetLedParam(PLedDoorG2, FLASH_TWO, 150, 3000);
 
   }
   
