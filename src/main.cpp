@@ -174,7 +174,7 @@ void setup() {
   debugln("Serveur actif!");
 }
 
-// ********* MAIN PROGRAMM **********
+// ********* MAIN PROGRAMME **********
 void loop() {
 
   GPIOController(PLedDoorG1, IO_LedDoorG1);
