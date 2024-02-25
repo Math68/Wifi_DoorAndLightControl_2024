@@ -2,7 +2,7 @@
 
 // Led Controller
 //
-// Independent fonction wich control an LED
+// Independent fonction wich control a LED
 // There it will be possible to have nine modes
 // OFF, ON, BLINK, FLASH 1,2,3 and the flashing inverse
 //
